@@ -52,6 +52,11 @@ export default function Dashboard() {
     tx: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6',
     block: '21,468,724'
   });
+
+  // Dynamic real-time analytics states
+  const [callsCount, setCallsCount] = useState(1247);
+  const [usdcSettled, setUsdcSettled] = useState(28.40);
+  const [gasSaved, setGasSaved] = useState(24.94);
   
   // Dynamic state for search and category filtering in Marketplace
   const [marketplaceSearch, setMarketplaceSearch] = useState('');
@@ -187,6 +192,9 @@ export default function Dashboard() {
             const matchedAPI = matchedAPIs.find(api => log.msg.includes(api.name));
             if (matchedAPI) {
               setAgentCost(prev => prev + matchedAPI.cost);
+              setCallsCount(prev => prev + 1);
+              setUsdcSettled(prev => prev + matchedAPI.cost);
+              setGasSaved(prev => prev + 0.02); // $0.02 saved per gasless call
               setLastAttestation({
                 provider: matchedAPI.name,
                 amount: `${matchedAPI.cost} USDC`,
@@ -224,15 +232,77 @@ export default function Dashboard() {
     }
   };
 
-  const handleRegisterAPI = () => {
-    alert(`Deploying API provider "${registryName || 'WeatherAPI Pro'}" to Kite Registry Contract on Testnet!\nSettlement Contract: 0x8d9FaD78d5Ce247aA01C140798B9558fd64a63E3\nUSDC Payment settled via EIP-3009 gasless transfers.`);
-    // Reset Form
-    setRegistryName('');
-    setRegistryUrl('');
-    setRegistryPrice('');
-    setRegistryDesc('');
-    setRegistryTags('');
-    setRegistryWallet('');
+  const handleRegisterAPI = async () => {
+    if (!registryName || !registryPrice) {
+      alert('Please fill out the API Name and Price per call!');
+      return;
+    }
+
+    try {
+      const tagsArray = registryTags ? registryTags.split(',').map(t => t.trim()) : ['api', 'kite'];
+      const parsedPrice = ethers.parseEther(registryPrice);
+
+      alert(`Initiating on-chain contract write to register "${registryName}" on Kite Service Registry! Please confirm in your browser wallet...`);
+
+      const hash = await writeContractAsync({
+        address: '0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173', // Registry address
+        abi: [
+          {
+            inputs: [
+              { internalType: "string", name: "name", type: "string" },
+              { internalType: "string", name: "endpoint", type: "string" },
+              { internalType: "uint256", name: "pricePerCall", type: "uint256" },
+              { internalType: "string[]", name: "tags", type: "string[]" }
+            ],
+            name: "registerService",
+            outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+            stateMutability: "nonpayable",
+            type: "function"
+          }
+        ],
+        functionName: 'registerService',
+        args: [
+          registryName,
+          registryUrl || 'https://api.weatherpro.com/v1',
+          parsedPrice,
+          tagsArray
+        ]
+      });
+
+      alert(`API Provider "${registryName}" registered successfully on Kite Registry Contract!\nTransaction Hash: ${hash}\n\nIt has been dynamically added to your local Marketplace!`);
+
+      // Add to APIs state list
+      const icon = registryCategory === 'Weather' ? '🌤' : registryCategory === 'Finance / Price' ? '📊' : registryCategory === 'AI / LLM' ? '🤖' : registryCategory === 'News / Media' ? '📰' : '⚙️';
+      const categoryName = registryCategory === 'Finance / Price' ? 'Finance' : registryCategory === 'AI / LLM' ? 'AI' : registryCategory === 'News / Media' ? 'News' : registryCategory === 'Data / Analytics' ? 'Data' : 'Weather';
+
+      setApis(prev => [
+        {
+          icon,
+          name: registryName,
+          desc: registryDesc || 'Autonomous paid API endpoint on Kite Testnet.',
+          price: registryPrice,
+          tags: tagsArray,
+          calls: '0',
+          uptime: '100%',
+          category: categoryName
+        },
+        ...prev
+      ]);
+
+      // Reset Form
+      setRegistryName('');
+      setRegistryUrl('');
+      setRegistryPrice('');
+      setRegistryDesc('');
+      setRegistryTags('');
+      setRegistryWallet('');
+
+      // Redirect to Marketplace to see it!
+      setActiveTab('marketplace');
+
+    } catch (err: any) {
+      alert(`Deployment failed: ${err.message || 'Transaction rejected by user.'}`);
+    }
   };
 
   const clearLog = () => {
@@ -241,14 +311,14 @@ export default function Dashboard() {
   };
 
   // Static/Dynamic Marketplace APIs list
-  const apis = [
+  const [apis, setApis] = useState([
     { icon: '🌤', name: 'WeatherAPI', desc: 'Real-time weather data for any city. Hourly forecasts, wind, humidity.', price: '0.005', tags: ['weather', 'realtime', 'forecast'], calls: '623', uptime: '99.9%', category: 'Weather' },
     { icon: '🧠', name: 'SentimentAPI', desc: 'AI-powered sentiment analysis for crypto news and social media.', price: '0.008', tags: ['ai', 'sentiment', 'crypto'], calls: '349', uptime: '99.7%', category: 'AI' },
     { icon: '📊', name: 'CryptoPriceAPI', desc: 'Live price feeds for 500+ tokens. OHLCV data, market cap.', price: '0.003', tags: ['finance', 'price', 'crypto'], calls: '891', uptime: '99.99%', category: 'Finance' },
     { icon: '📰', name: 'NewsAPI', desc: 'Top headlines from 50,000 sources. Categorised, deduplicated.', price: '0.010', tags: ['news', 'media', 'headlines'], calls: '188', uptime: '98.9%', category: 'News' },
     { icon: '🤖', name: 'GPT-MiniProxy', desc: 'Lightweight Claude Haiku wrapper. Pay per 1k tokens generated.', price: '0.050', tags: ['ai', 'llm', 'text'], calls: '44', uptime: '97.2%', category: 'AI' },
     { icon: '🗺', name: 'GeocoderAPI', desc: 'Address to coordinates and reverse. 99.5% accuracy globally.', price: '0.002', tags: ['geo', 'location', 'maps'], calls: '267', uptime: '99.6%', category: 'Data' },
-  ];
+  ]);
 
   // Filtering Marketplace
   const filteredApis = apis.filter(a => {
@@ -978,12 +1048,12 @@ export default function Dashboard() {
               <div className="stat-grid">
                 <div className="stat-card">
                   <div className="stat-label">TOTAL API CALLS</div>
-                  <div className="stat-value" style={{ color: 'var(--green)' }}>1,247</div>
+                  <div className="stat-value" style={{ color: 'var(--green)' }}>{callsCount.toLocaleString()}</div>
                   <div className="stat-delta delta-up">↑ 18% this week</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">USDC SETTLED</div>
-                  <div className="stat-value">$28.40</div>
+                  <div className="stat-value">{usdcSettled.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div>
                   <div className="stat-delta delta-up">↑ $4.20 today</div>
                 </div>
                 <div className="stat-card">
@@ -993,7 +1063,7 @@ export default function Dashboard() {
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">ATTESTATIONS</div>
-                  <div className="stat-value" style={{ color: 'var(--purple)' }}>1,247</div>
+                  <div className="stat-value" style={{ color: 'var(--purple)' }}>{callsCount.toLocaleString()}</div>
                   <div className="stat-delta delta-up">100% on-chain</div>
                 </div>
                 <div className="stat-card" style={{ borderColor: 'var(--purple)', background: 'rgba(167,139,250,0.02)' }}>
@@ -1039,7 +1109,19 @@ export default function Dashboard() {
                         <div className="activity-icon">{act.icon}</div>
                         <div className="activity-main">
                           <div className="activity-title">{act.title}</div>
-                          <div className="activity-sub">{act.desc}</div>
+                          <div className="activity-sub" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span>{act.desc}</span>
+                            {act.hash && (
+                              <a 
+                                href={`https://testnet.kitescan.ai/tx/${act.hash}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ color: 'var(--green)', fontFamily: 'var(--mono)', fontSize: '10px', textDecoration: 'underline', width: 'fit-content', cursor: 'pointer' }}
+                              >
+                                {act.hash.slice(0, 10)}...{act.hash.slice(-4)} ↗
+                              </a>
+                            )}
+                          </div>
                         </div>
                         <div className="activity-amount" style={{ color: act.amount === 'on-chain' ? 'var(--purple)' : act.amount === 'pending' ? 'var(--yellow)' : 'var(--green)' }}>
                           {act.amount} {act.amount !== 'on-chain' && act.amount !== 'pending' && 'USDC'}
@@ -1319,7 +1401,7 @@ export default function Dashboard() {
                     <div className="att-icon">{a.icon}</div>
                     <div className="att-info">
                       <div className="att-title">{a.title}</div>
-                      <div className="att-hash">{a.desc} · <a href="https://testnet.kitescan.ai" target="_blank">0x{a.hash.slice(2, 10)}...{a.hash.slice(-4)} ↗</a> · Kite Testnet · Block attested</div>
+                      <div className="att-hash">{a.desc} · <a href={`https://testnet.kitescan.ai/tx/${a.hash}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--green)', textDecoration: 'underline', cursor: 'pointer' }}>{a.hash.slice(0, 10)}...{a.hash.slice(-4)} ↗</a> · Kite Testnet · Block attested</div>
                     </div>
                     <div className="att-right">
                       <div className="att-amount">{a.amount === 'on-chain' || a.amount === 'pending' ? '0.000' : a.amount} USDC</div>
@@ -1335,9 +1417,9 @@ export default function Dashboard() {
           {activeTab === 'analytics' && (
             <div className="page active" id="page-analytics">
               <div className="stat-grid">
-                <div className="stat-card"><div className="stat-label">AVG COST/CALL</div><div className="stat-value" style={{ color: 'var(--green)' }}>$0.007</div><div className="stat-delta delta-down">↓ 12% vs last week</div></div>
+                <div className="stat-card"><div className="stat-label">AVG COST/CALL</div><div className="stat-value" style={{ color: 'var(--green)' }}>{(usdcSettled / callsCount).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 3 })}</div><div className="stat-delta delta-down">↓ 12% vs last week</div></div>
                 <div className="stat-card"><div className="stat-label">TOP API</div><div className="stat-value" style={{ fontSize: '20px' }}>WeatherAPI</div><div className="stat-delta" style={{ color: 'var(--muted)' }}>623 calls this week</div></div>
-                <div className="stat-card"><div className="stat-label">GAS SAVED</div><div className="stat-value" style={{ color: 'var(--yellow)' }}>$0.00</div><div className="stat-delta delta-up">↑ 100% gasless</div></div>
+                <div className="stat-card"><div className="stat-label">GAS SAVED</div><div className="stat-value" style={{ color: 'var(--yellow)' }}>{gasSaved.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div><div className="stat-delta delta-up">↑ 100% gasless</div></div>
                 <div className="stat-card"><div className="stat-label">ON-CHAIN RATE</div><div className="stat-value" style={{ color: 'var(--green)' }}>100%</div><div className="stat-delta" style={{ color: 'var(--muted)' }}>All calls attested</div></div>
               </div>
 
