@@ -48,7 +48,7 @@ export default function Dashboard() {
   const [agentCost, setAgentCost] = useState(0.000);
   const [lastAttestation, setLastAttestation] = useState({
     provider: 'WeatherAPI',
-    amount: '0.005 USDC',
+    amount: '0.005 PYUSD',
     tx: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6',
     block: '21,468,724'
   });
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
       matchedAPIs.forEach((api) => {
         remainingLogs.push(
-          { level: 'pay', msg: `Generating EIP-3009 signature for <hl>${api.cost} USDC</hl> → ${api.name}`, time: confirmTime },
+          { level: 'pay', msg: `Generating EIP-3009 signature for <hl>${api.cost} PYUSD</hl> → ${api.name}`, time: confirmTime },
           { level: 'pay', msg: `POST https://gasless.gokite.ai/testnet → txHash: <a href="https://testnet.kitescan.ai/tx/${hash}" target="_blank" style="color: var(--green); text-decoration: underline; font-weight: bold; cursor: pointer;">${hash.slice(0, 24)}... ↗</a>`, time: confirmTime },
           { level: 'success', msg: `${api.name} paid ✓ — Response: ${api.response}`, time: confirmTime }
         );
@@ -179,8 +179,8 @@ export default function Dashboard() {
       const totalCost = matchedAPIs.reduce((sum, api) => sum + api.cost, 0);
 
       remainingLogs.push(
-        { level: 'success', msg: `Attestations posted on Kite Testnet: ${matchedAPIs.length} calls, <hl>$${totalCost.toFixed(3)} USDC</hl> total`, time: confirmTime },
-        { level: 'success', msg: `Agent complete ✓ — Total cost: <hl>$${totalCost.toFixed(3)} USDC</hl> | 0 gas used`, time: confirmTime }
+        { level: 'success', msg: `Attestations posted on Kite Testnet: ${matchedAPIs.length} calls, <hl>${totalCost.toFixed(3)} PYUSD</hl> total`, time: confirmTime },
+        { level: 'success', msg: `Agent complete ✓ — Total cost: <hl>${totalCost.toFixed(3)} PYUSD</hl> | 0 gas used`, time: confirmTime }
       );
 
       // Print remaining logs with slight visual spacing delays
@@ -197,7 +197,7 @@ export default function Dashboard() {
               setGasSaved(prev => prev + 0.02); // $0.02 saved per gasless call
               setLastAttestation({
                 provider: matchedAPI.name,
-                amount: `${matchedAPI.cost} USDC`,
+                amount: `${matchedAPI.cost} PYUSD`,
                 tx: hash,
                 block: '21,468,724'
               });
@@ -985,7 +985,7 @@ export default function Dashboard() {
             <div className="wallet-card" onClick={() => setWalletDropdownOpen(!walletDropdownOpen)} style={{ cursor: 'pointer' }} title="Wallet options">
               <div className="wallet-label">PASSPORT WALLET</div>
               <div className="wallet-balance">
-                {kiteBalance ? `${parseFloat(ethers.formatUnits(kiteBalance.value, kiteBalance.decimals)).toFixed(3)} ${kiteBalance.symbol}` : '4.820 USDC'}
+                {kiteBalance ? `${parseFloat(ethers.formatUnits(kiteBalance.value, kiteBalance.decimals)).toFixed(3)} ${kiteBalance.symbol}` : '4.820 PYUSD'}
               </div>
               <div className="wallet-addr" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {address ? (
@@ -1052,8 +1052,8 @@ export default function Dashboard() {
                   <div className="stat-delta delta-up">↑ 18% this week</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-label">USDC SETTLED</div>
-                  <div className="stat-value">{usdcSettled.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div>
+                  <div className="stat-label">PYUSD SETTLED</div>
+                  <div className="stat-value">{usdcSettled.toFixed(2)} PYUSD</div>
                   <div className="stat-delta delta-up">↑ $4.20 today</div>
                 </div>
                 <div className="stat-card">
@@ -1124,7 +1124,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="activity-amount" style={{ color: act.amount === 'on-chain' ? 'var(--purple)' : act.amount === 'pending' ? 'var(--yellow)' : 'var(--green)' }}>
-                          {act.amount} {act.amount !== 'on-chain' && act.amount !== 'pending' && 'USDC'}
+                          {act.amount} {act.amount !== 'on-chain' && act.amount !== 'pending' && 'PYUSD'}
                         </div>
                       </div>
                     ))}
@@ -1165,7 +1165,7 @@ export default function Dashboard() {
                           <td className="mono-cell" style={{ color: 'var(--muted)' }}>
                             {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '0x3f2a...8b91'}
                           </td>
-                          <td className="mono-cell" style={{ color: 'var(--green)' }}>{a.amount === 'on-chain' || a.amount === 'pending' ? '0.000' : a.amount} USDC</td>
+                          <td className="mono-cell" style={{ color: 'var(--green)' }}>{a.amount === 'on-chain' || a.amount === 'pending' ? '0.000' : a.amount} PYUSD</td>
                           <td>
                             <a href={`https://testnet.kitescan.ai/tx/${a.hash}`} target="_blank" className="mono-cell" style={{ color: 'var(--green)', textDecoration: 'none', fontSize: '11px' }}>
                               {a.hash.slice(0, 10)}... ↗
@@ -1210,7 +1210,7 @@ export default function Dashboard() {
                   <div className="api-card" key={i}>
                     <div className="api-card-top">
                       <div className="api-icon">{a.icon}</div>
-                      <div className="api-price">{a.price} USDC/call</div>
+                      <div className="api-price">{a.price} PYUSD/call</div>
                     </div>
                     <div className="api-name">{a.name}</div>
                     <div className="api-desc">{a.desc}</div>
@@ -1241,9 +1241,9 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div className="agent-label" style={{ color: 'var(--green)' }} id="agentCost">
-                      Total spent: ${agentCost.toFixed(3)} USDC
-                    </div>
+                     <div className="agent-label" style={{ color: 'var(--green)' }} id="agentCost">
+                       Total spent: {agentCost.toFixed(3)} PYUSD
+                     </div>
                     <button className="tb-btn" onClick={clearLog}>Clear</button>
                   </div>
                 </div>
@@ -1404,7 +1404,7 @@ export default function Dashboard() {
                       <div className="att-hash">{a.desc} · <a href={`https://testnet.kitescan.ai/tx/${a.hash}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--green)', textDecoration: 'underline', cursor: 'pointer' }}>{a.hash.slice(0, 10)}...{a.hash.slice(-4)} ↗</a> · Kite Testnet · Block attested</div>
                     </div>
                     <div className="att-right">
-                      <div className="att-amount">{a.amount === 'on-chain' || a.amount === 'pending' ? '0.000' : a.amount} USDC</div>
+                      <div className="att-amount">{a.amount === 'on-chain' || a.amount === 'pending' ? '0.000' : a.amount} PYUSD</div>
                       <div className="att-time">{a.time}</div>
                     </div>
                   </div>
@@ -1417,15 +1417,15 @@ export default function Dashboard() {
           {activeTab === 'analytics' && (
             <div className="page active" id="page-analytics">
               <div className="stat-grid">
-                <div className="stat-card"><div className="stat-label">AVG COST/CALL</div><div className="stat-value" style={{ color: 'var(--green)' }}>{(usdcSettled / callsCount).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 3 })}</div><div className="stat-delta delta-down">↓ 12% vs last week</div></div>
+                <div className="stat-card"><div className="stat-label">AVG COST/CALL</div><div className="stat-value" style={{ color: 'var(--green)' }}>{(usdcSettled / callsCount).toFixed(3)} PYUSD</div><div className="stat-delta delta-down">↓ 12% vs last week</div></div>
                 <div className="stat-card"><div className="stat-label">TOP API</div><div className="stat-value" style={{ fontSize: '20px' }}>WeatherAPI</div><div className="stat-delta" style={{ color: 'var(--muted)' }}>623 calls this week</div></div>
-                <div className="stat-card"><div className="stat-label">GAS SAVED</div><div className="stat-value" style={{ color: 'var(--yellow)' }}>{gasSaved.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</div><div className="stat-delta delta-up">↑ 100% gasless</div></div>
+                <div className="stat-card"><div className="stat-label">GAS SAVED</div><div className="stat-value" style={{ color: 'var(--yellow)' }}>{gasSaved.toFixed(2)} PYUSD</div><div className="stat-delta delta-up">↑ 100% gasless</div></div>
                 <div className="stat-card"><div className="stat-label">ON-CHAIN RATE</div><div className="stat-value" style={{ color: 'var(--green)' }}>100%</div><div className="stat-delta" style={{ color: 'var(--muted)' }}>All calls attested</div></div>
               </div>
 
               <div className="analytics-grid">
                 <div className="chart-panel">
-                  <div className="chart-title">Daily USDC Spend</div>
+                  <div className="chart-title">Daily PYUSD Spend</div>
                   <div className="chart-sub">Last 14 days · Gasless EIP-3009 transfers only</div>
                   <div className="bar-chart" style={{ height: '150px' }}>
                     <div className="bar-col"><div className="bar-fill" style={{ height: '20%' }}></div><div className="bar-label">1</div></div>
@@ -1508,17 +1508,17 @@ export default function Dashboard() {
                         value={registryUrl}
                         onChange={(e) => setRegistryUrl(e.target.value)}
                       />
-                      <div className="form-hint">Must accept EIP-3009 USDC payment before returning data</div>
+                      <div className="form-hint">Must accept EIP-3009 PYUSD payment before returning data</div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">PRICE PER CALL (USDC)</label>
+                      <label className="form-label">PRICE PER CALL (PYUSD)</label>
                       <input 
                         className="form-input" 
                         placeholder="0.005" 
                         value={registryPrice}
                         onChange={(e) => setRegistryPrice(e.target.value)}
                       />
-                      <div className="form-hint">Min: 0.001 USDC · Token: PYUSD on testnet</div>
+                      <div className="form-hint">Min: 0.001 PYUSD · Token: PYUSD on testnet</div>
                     </div>
                     <div className="form-group full-col">
                       <label className="form-label">DESCRIPTION</label>
@@ -1542,7 +1542,7 @@ export default function Dashboard() {
                       <label className="form-label">PROVIDER WALLET ADDRESS</label>
                       <input 
                         className="form-input" 
-                        placeholder="0x... (receives USDC payments)" 
+                        placeholder="0x... (receives PYUSD payments)" 
                         value={registryWallet}
                         onChange={(e) => setRegistryWallet(e.target.value)}
                       />
