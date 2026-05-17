@@ -52,12 +52,6 @@ export default function Dashboard() {
     tx: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6',
     block: '21,468,724'
   });
-
-  // Dynamic real-time analytics states
-  const [callsCount, setCallsCount] = useState(1247);
-  const [usdcSettled, setUsdcSettled] = useState(28.40);
-  const [gasSaved, setGasSaved] = useState(24.94);
-  
   // Dynamic state for search and category filtering in Marketplace
   const [marketplaceSearch, setMarketplaceSearch] = useState('');
   const [marketplaceCategory, setMarketplaceCategory] = useState('All categories');
@@ -82,6 +76,16 @@ export default function Dashboard() {
     { icon: '🔐', title: 'Session created', hash: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6', amount: 'pending', time: '8 min ago', status: 'PENDING', desc: 'Budget: $1.00 · SentimentAPI scope' },
     { icon: '⚡', title: 'SentimentAPI called', hash: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6', amount: '0.008', time: '11 min ago', status: 'SETTLED', desc: 'Agent 0x3f2a → BTC sentiment' },
   ]);
+
+  // Real-time computed dashboard metrics from activities state
+  const totalApiCalls = activities.filter(a => a.title.includes('called')).length;
+  const totalPyusdSettled = activities.reduce((sum, a) => {
+    const val = parseFloat(a.amount);
+    return isNaN(val) ? sum : sum + val;
+  }, 0);
+  const activeSessions = activities.filter(a => a.status === 'PENDING').length;
+  const totalAttestations = activities.filter(a => a.title.includes('called') || a.title.includes('posted')).length;
+  const gasSaved = totalApiCalls * 0.02;
 
   // Explicitly restore standard system cursor on mount
   useEffect(() => {
@@ -188,13 +192,25 @@ export default function Dashboard() {
         setTimeout(() => {
           setTerminalLogs(prev => [...prev, log]);
 
+          if (log.level === 'success' && log.msg.includes('Session approved')) {
+            setActivities(prev => [
+              {
+                icon: '🔐',
+                title: 'Session created',
+                hash: hash,
+                amount: 'pending',
+                time: 'Just now',
+                status: 'PENDING',
+                desc: `Budget: $1.00 · Session authorized`
+              },
+              ...prev
+            ]);
+          }
+
           if (log.level === 'pay' && log.msg.includes('Generating EIP-3009 signature')) {
             const matchedAPI = matchedAPIs.find(api => log.msg.includes(api.name));
             if (matchedAPI) {
               setAgentCost(prev => prev + matchedAPI.cost);
-              setCallsCount(prev => prev + 1);
-              setUsdcSettled(prev => prev + matchedAPI.cost);
-              setGasSaved(prev => prev + 0.02); // $0.02 saved per gasless call
               setLastAttestation({
                 provider: matchedAPI.name,
                 amount: `${matchedAPI.cost} PYUSD`,
@@ -218,6 +234,18 @@ export default function Dashboard() {
 
           if (idx === remainingLogs.length - 1) {
             setIsRunning(false);
+            setActivities(prev => [
+              {
+                icon: '🔗',
+                title: 'Attestation posted',
+                hash: hash,
+                amount: 'on-chain',
+                time: 'Just now',
+                status: 'SETTLED',
+                desc: `tx: ${hash.slice(0, 6)}... · Kite testnet`
+              },
+              ...prev.map(a => a.status === 'PENDING' ? { ...a, status: 'SETTLED' as const } : a)
+            ]);
           }
         }, idx * 800);
       });
@@ -972,9 +1000,7 @@ export default function Dashboard() {
           <div className={`nav-item ${activeTab === 'attestations' ? 'active' : ''}`} onClick={() => { setActiveTab('attestations'); setSidebarOpen(false); }}>
             <span className="icon">◉</span> Attestations
           </div>
-          <div className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => { setActiveTab('analytics'); setSidebarOpen(false); }}>
-            <span className="icon">◌</span> Analytics
-          </div>
+
           <div className="nav-section-label">Provider</div>
           <div className={`nav-item ${activeTab === 'register' ? 'active' : ''}`} onClick={() => { setActiveTab('register'); setSidebarOpen(false); }}>
             <span className="icon">⊕</span> Register API
@@ -1048,22 +1074,22 @@ export default function Dashboard() {
               <div className="stat-grid">
                 <div className="stat-card">
                   <div className="stat-label">TOTAL API CALLS</div>
-                  <div className="stat-value" style={{ color: 'var(--green)' }}>{callsCount.toLocaleString()}</div>
+                  <div className="stat-value" style={{ color: 'var(--green)' }}>{totalApiCalls.toLocaleString()}</div>
                   <div className="stat-delta delta-up">↑ 18% this week</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">PYUSD SETTLED</div>
-                  <div className="stat-value">{usdcSettled.toFixed(2)} PYUSD</div>
+                  <div className="stat-value">{totalPyusdSettled.toFixed(3)} PYUSD</div>
                   <div className="stat-delta delta-up">↑ $4.20 today</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">ACTIVE SESSIONS</div>
-                  <div className="stat-value" style={{ color: 'var(--yellow)' }}>3</div>
+                  <div className="stat-value" style={{ color: 'var(--yellow)' }}>{activeSessions.toLocaleString()}</div>
                   <div className="stat-delta" style={{ color: 'var(--muted)' }}>2 expiring soon</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">ATTESTATIONS</div>
-                  <div className="stat-value" style={{ color: 'var(--purple)' }}>{callsCount.toLocaleString()}</div>
+                  <div className="stat-value" style={{ color: 'var(--purple)' }}>{totalAttestations.toLocaleString()}</div>
                   <div className="stat-delta delta-up">100% on-chain</div>
                 </div>
                 <div className="stat-card" style={{ borderColor: 'var(--purple)', background: 'rgba(167,139,250,0.02)' }}>
@@ -1409,64 +1435,6 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* ANALYTICS TAB */}
-          {activeTab === 'analytics' && (
-            <div className="page active" id="page-analytics">
-              <div className="stat-grid">
-                <div className="stat-card"><div className="stat-label">AVG COST/CALL</div><div className="stat-value" style={{ color: 'var(--green)' }}>{(usdcSettled / callsCount).toFixed(3)} PYUSD</div><div className="stat-delta delta-down">↓ 12% vs last week</div></div>
-                <div className="stat-card"><div className="stat-label">TOP API</div><div className="stat-value" style={{ fontSize: '20px' }}>WeatherAPI</div><div className="stat-delta" style={{ color: 'var(--muted)' }}>623 calls this week</div></div>
-                <div className="stat-card"><div className="stat-label">GAS SAVED</div><div className="stat-value" style={{ color: 'var(--yellow)' }}>{gasSaved.toFixed(2)} PYUSD</div><div className="stat-delta delta-up">↑ 100% gasless</div></div>
-                <div className="stat-card"><div className="stat-label">ON-CHAIN RATE</div><div className="stat-value" style={{ color: 'var(--green)' }}>100%</div><div className="stat-delta" style={{ color: 'var(--muted)' }}>All calls attested</div></div>
-              </div>
-
-              <div className="analytics-grid">
-                <div className="chart-panel">
-                  <div className="chart-title">Daily PYUSD Spend</div>
-                  <div className="chart-sub">Last 14 days · Gasless EIP-3009 transfers only</div>
-                  <div className="bar-chart" style={{ height: '150px' }}>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '20%' }}></div><div className="bar-label">1</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '38%' }}></div><div className="bar-label">2</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '25%' }}></div><div className="bar-label">3</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '55%' }}></div><div className="bar-label">4</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '42%' }}></div><div className="bar-label">5</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '70%' }}></div><div className="bar-label">6</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '58%' }}></div><div className="bar-label">7</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '48%' }}></div><div className="bar-label">8</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '82%' }}></div><div className="bar-label">9</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '65%' }}></div><div className="bar-label">10</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '90%' }}></div><div className="bar-label">11</div></div>
-                    <div className="bar-col"><div className="bar-fill max" style={{ height: '100%' }}></div><div className="bar-label">12</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '72%' }}></div><div className="bar-label">13</div></div>
-                    <div className="bar-col"><div className="bar-fill" style={{ height: '64%' }}></div><div className="bar-label">14</div></div>
-                  </div>
-                </div>
-                <div className="chart-panel">
-                  <div className="chart-title">API Distribution</div>
-                  <div className="chart-sub">By call volume</div>
-                  <div className="donut-chart">
-                    <svg viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0f172a" stroke-width="3.8"/>
-                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--green)" stroke-width="3.8" stroke-dasharray="50 50" stroke-dashoffset="25"/>
-                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" stroke-width="3.8" stroke-dasharray="28 72" stroke-dashoffset="-25"/>
-                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="#fbbf24" stroke-width="3.8" stroke-dasharray="15 85" stroke-dashoffset="-53"/>
-                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="#a78bfa" stroke-width="3.8" stroke-dasharray="7 93" stroke-dashoffset="-68"/>
-                    </svg>
-                    <div className="donut-center">
-                      <div className="donut-center-num">1,247</div>
-                      <div className="donut-center-label">CALLS</div>
-                    </div>
-                  </div>
-                  <div className="legend">
-                    <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--green)' }}></div><div className="legend-label">WeatherAPI</div><div className="legend-val">50%</div></div>
-                    <div className="legend-item"><div className="legend-dot" style={{ background: '#3b82f6' }}></div><div className="legend-label">SentimentAPI</div><div className="legend-val">28%</div></div>
-                    <div className="legend-item"><div className="legend-dot" style={{ background: '#fbbf24' }}></div><div className="legend-label">NewsAPI</div><div className="legend-val">15%</div></div>
-                    <div className="legend-item"><div className="legend-dot" style={{ background: '#a78bfa' }}></div><div className="legend-label">PriceAPI</div><div className="legend-val">7%</div></div>
-                  </div>
-                </div>
               </div>
             </div>
           )}
