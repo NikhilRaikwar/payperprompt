@@ -150,6 +150,30 @@ export default function Dashboard() {
     const q = agentQuery || "Get me today's ETH price and BTC sentiment";
     const tStr = new Date().toTimeString().slice(0, 8);
 
+    // Initial default mock values
+    let liveEthPrice = '3,241.50';
+    let liveBtcPrice = '67,820.10';
+    let liveNycTemp = '22';
+    
+    // Asynchronously fetch real live price from Coingecko
+    try {
+      const pRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd');
+      const pData = await pRes.json();
+      if (pData.ethereum?.usd) liveEthPrice = pData.ethereum.usd.toLocaleString();
+      if (pData.bitcoin?.usd) liveBtcPrice = pData.bitcoin.usd.toLocaleString();
+    } catch (e) {
+      console.log('Failed to fetch live prices from CoinGecko:', e);
+    }
+    
+    // Asynchronously fetch real live weather from Open-Meteo
+    try {
+      const wRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&current_weather=true');
+      const wData = await wRes.json();
+      if (wData.current_weather?.temperature) liveNycTemp = wData.current_weather.temperature;
+    } catch (e) {
+      console.log('Failed to fetch live weather from Open-Meteo:', e);
+    }
+
     const qLower = q.toLowerCase();
     const isWeather = qLower.includes('weather') || qLower.includes('temp') || qLower.includes('nyc') || qLower.includes('rain') || qLower.includes('forecast');
     const isSentiment = qLower.includes('sentiment') || qLower.includes('bullish') || qLower.includes('bearish') || qLower.includes('mood');
@@ -160,13 +184,13 @@ export default function Dashboard() {
 
     const matchedAPIs: Array<{ name: string; cost: number; response: string; desc: string; icon: string }> = [];
     if (isWeather) {
-      matchedAPIs.push({ name: 'WeatherAPI', cost: 0.005, response: 'NYC temp 22°C, humidity 65%, Sunny', desc: 'NYC weather info', icon: '🌤' });
+      matchedAPIs.push({ name: 'WeatherAPI', cost: 0.005, response: `NYC temp ${liveNycTemp}°C, humidity 65%, Sunny`, desc: 'NYC weather info', icon: '🌤' });
     }
     if (isSentiment) {
       matchedAPIs.push({ name: 'SentimentAPI', cost: 0.008, response: 'Crypto market sentiment: Bullish 78%', desc: 'BTC/ETH sentiment score', icon: '🧠' });
     }
     if (isPrice) {
-      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.003, response: 'ETH price: $3,241.50 | BTC price: $67,820.10', desc: 'Crypto real-time ticker feed', icon: '📊' });
+      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.003, response: `ETH price: $${liveEthPrice} | BTC price: $${liveBtcPrice}`, desc: 'Crypto real-time ticker feed', icon: '📊' });
     }
     if (isNews) {
       matchedAPIs.push({ name: 'NewsAPI', cost: 0.010, response: 'Breaking: Kite AI partners with PYUSD for EIP-3009 gasless relayer ecosystem.', desc: 'Top world headlines', icon: '📰' });
@@ -180,7 +204,7 @@ export default function Dashboard() {
     
     // Fallback if none matched
     if (matchedAPIs.length === 0) {
-      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.003, response: 'ETH price: $3,241.50 | BTC price: $67,820.10', desc: 'Crypto real-time ticker feed', icon: '📊' });
+      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.003, response: `ETH price: $${liveEthPrice} | BTC price: $${liveBtcPrice}`, desc: 'Crypto real-time ticker feed', icon: '📊' });
     }
 
     const matchedNames = matchedAPIs.map(a => a.name).join(' + ');
@@ -1184,7 +1208,7 @@ export default function Dashboard() {
                 <div className="panel">
                   <div className="panel-header">
                     <div className="panel-title">API Call Volume (7d)</div>
-                    <div className="panel-action">view all →</div>
+                    <div className="panel-action" onClick={() => setActiveTab('attestations')} style={{ cursor: 'pointer' }}>view all →</div>
                   </div>
                   <div className="panel-body">
                     <div className="bar-chart">
