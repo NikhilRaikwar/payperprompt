@@ -437,13 +437,28 @@ export default function Dashboard() {
           border-bottom: 1px solid var(--border);
         }
         .logo-text {
-          font-family: var(--mono);
-          font-size: 11px;
-          color: var(--green);
-          letter-spacing: 0.06em;
-          line-height: 1.3;
+          font-family: var(--display);
+          font-size: 16px;
+          font-weight: 800;
+          letter-spacing: -0.01em;
+          line-height: 1.2;
+          display: flex;
+          align-items: center;
+          gap: 2px;
         }
-        .logo-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+        .logo-text .pay { color: #ffffff; }
+        .logo-text .slash { color: rgba(255,255,255,0.15); font-weight: 300; font-family: var(--mono); }
+        .logo-text .per {
+          background: linear-gradient(135deg, #00d2ff 0%, #3b82f6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .logo-text .prompt {
+          background: linear-gradient(135deg, #a855f7 0%, #d946ef 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .logo-sub { font-size: 9px; font-family: var(--mono); color: var(--muted); margin-top: 4px; letter-spacing: 0.04em; }
         
         .sidebar-nav { padding: 12px 0; flex: 1; }
         .nav-section-label {
@@ -977,7 +992,13 @@ export default function Dashboard() {
       {/* SIDEBAR */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="logo-text">PAY/PER/PROMPT</div>
+          <div className="logo-text">
+            <span className="pay">PAY</span>
+            <span className="slash">/</span>
+            <span className="per">PER</span>
+            <span className="slash">/</span>
+            <span className="prompt">PROMPT</span>
+          </div>
           <div className="logo-sub">API Marketplace · v0.1.0</div>
         </div>
         <nav className="sidebar-nav">

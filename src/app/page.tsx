@@ -132,13 +132,27 @@ export default function Page() {
           background: rgba(3,7,18,0.8);
         }
         .nav-logo {
-          font-family: var(--mono);
-          font-size: 14px;
-          color: var(--green);
-          letter-spacing: 0.05em;
+          font-family: var(--display);
+          font-size: 18px;
+          font-weight: 800;
+          letter-spacing: -0.01em;
           text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 2px;
         }
-        .nav-logo span { color: var(--muted); }
+        .nav-logo .pay { color: #ffffff; }
+        .nav-logo .slash { color: rgba(255,255,255,0.15); font-weight: 300; font-family: var(--mono); }
+        .nav-logo .per {
+          background: linear-gradient(135deg, #00d2ff 0%, #3b82f6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .nav-logo .prompt {
+          background: linear-gradient(135deg, #a855f7 0%, #d946ef 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
         .nav-links { display: flex; gap: 40px; list-style: none; }
         .nav-links a {
           font-size: 13px;
@@ -673,7 +687,13 @@ export default function Page() {
       <div className="noise"></div>
 
       <nav>
-        <a href="#" className="nav-logo">PAY<span>/</span>PER<span>/</span>PROMPT</a>
+        <a href="#" className="nav-logo">
+          <span className="pay">PAY</span>
+          <span className="slash">/</span>
+          <span className="per">PER</span>
+          <span className="slash">/</span>
+          <span className="prompt">PROMPT</span>
+        </a>
         <ul className="nav-links">
           <li><a href="#how">How it works</a></li>
           <li><a href="#architecture">Architecture</a></li>
