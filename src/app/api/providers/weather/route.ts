@@ -114,6 +114,61 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Extract queried city
+  const { searchParams } = new URL(req.url);
+  const city = searchParams.get('city') || 'Bhopal';
+
+  // Real-time AI weather generator using OpenAI
+  let weatherData = {
+    city:      city,
+    temp:      '29°C',
+    feelsLike: '32°C',
+    humidity:  '58%',
+    condition: 'Sunny',
+    wind:      '12 km/h E',
+    forecast: [
+      { day: 'Tomorrow', high: '31°C', low: '22°C', condition: 'Sunny' },
+      { day: 'Thursday', high: '30°C', low: '23°C', condition: 'Partly Cloudy' },
+    ],
+  };
+
+  const hasOpenAIKey = process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your_openai_api_key_here');
+  if (hasOpenAIKey) {
+    try {
+      const { OpenAI } = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 250,
+        messages: [{
+          role: 'user',
+          content: `Generate a realistic weather data JSON object for the city of "${city}". Return ONLY valid JSON matching this schema:
+          { "city": "${city}", "temp": "28°C", "feelsLike": "30°C", "humidity": "60%", "condition": "Cloudy", "wind": "15 km/h N", "forecast": [{"day": "Tomorrow", "high": "29°C", "low": "20°C", "condition": "Sunny"}] }`
+        }],
+      });
+      const content = completion.choices[0].message.content || '';
+      weatherData = JSON.parse(content.replace(/```json\n?|```/g, '').trim());
+    } catch (err) {
+      console.error('[WeatherAPI] Failed to fetch dynamic weather via OpenAI:', err);
+    }
+  } else {
+    // Generate clean mock defaults for common queries
+    if (city.toLowerCase().includes('bhopal')) {
+      weatherData = {
+        city:      'Bhopal',
+        temp:      '33°C',
+        feelsLike: '36°C',
+        humidity:  '50%',
+        condition: 'Clear Sky',
+        wind:      '10 km/h NW',
+        forecast: [
+          { day: 'Tomorrow', high: '35°C', low: '24°C', condition: 'Sunny' },
+          { day: 'Thursday', high: '34°C', low: '23°C', condition: 'Clear' },
+        ],
+      };
+    }
+  }
+
   // Payment verified — return real data
   return NextResponse.json({
     provider:     'WeatherAPI',
@@ -121,17 +176,6 @@ export async function GET(req: NextRequest) {
     settledOn:    'Kite Testnet (Chain 2368)',
     txHash,
     verified:     !isDemoMode,
-    data: {
-      city:      'New York',
-      temp:      '22°C',
-      feelsLike: '20°C',
-      humidity:  '65%',
-      condition: 'Partly cloudy',
-      wind:      '14 km/h SW',
-      forecast: [
-        { day: 'Tomorrow', high: '24°C', low: '18°C', condition: 'Sunny' },
-        { day: 'Thursday', high: '21°C', low: '16°C', condition: 'Rain' },
-      ],
-    },
+    data:         weatherData,
   });
 }

@@ -36,19 +36,46 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(PAYMENT_TERMS, { status: 402 });
   }
 
+  // Extract queried topic
+  const { searchParams } = new URL(req.url);
+  const topic = searchParams.get('topic') || 'general';
+
+  // Real-time AI headlines generator using OpenAI
+  let newsData = {
+    fetchedAt: new Date().toISOString(),
+    headlines: [
+      { title: `AI agent economy reaches $50B milestone in ${topic}`, source: 'TechCrunch', sentiment: 'positive', url: 'https://techcrunch.com' },
+      { title: `Kite AI launches dynamic ${topic} infrastructure`, source: 'CoinDesk', sentiment: 'positive', url: 'https://coindesk.com' },
+      { title: `EIP-3009 gasless transfers see record adoption in ${topic} services`, source: 'Decrypt', sentiment: 'positive', url: 'https://decrypt.co' },
+    ],
+  };
+
+  const hasOpenAIKey = process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your_openai_api_key_here');
+  if (hasOpenAIKey) {
+    try {
+      const { OpenAI } = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 250,
+        messages: [{
+          role: 'user',
+          content: `Generate a realistic news headlines data JSON object for the topic "${topic}". Return ONLY valid JSON matching this schema:
+          { "fetchedAt": "${new Date().toISOString()}", "headlines": [{"title": "Headline here", "source": "Reuters", "sentiment": "positive", "url": "https://reuters.com"}] }`
+        }],
+      });
+      const content = completion.choices[0].message.content || '';
+      newsData = JSON.parse(content.replace(/```json\n?|```/g, '').trim());
+    } catch (err) {
+      console.error('[NewsAPI] Failed to fetch dynamic headlines via OpenAI:', err);
+    }
+  }
+
   return NextResponse.json({
     provider:     'NewsAPI',
     priceCharged: PRICE_DISPLAY,
     settledOn:    'Kite Testnet (Chain 2368)',
     txHash,
-    data: {
-      fetchedAt: new Date().toISOString(),
-      headlines: [
-        { title: 'AI agent economy reaches $50B milestone', source: 'TechCrunch', sentiment: 'positive', url: 'https://techcrunch.com' },
-        { title: 'Kite AI launches agentic payment infrastructure', source: 'CoinDesk', sentiment: 'positive', url: 'https://coindesk.com' },
-        { title: 'EIP-3009 gasless transfers see record adoption', source: 'Decrypt', sentiment: 'positive', url: 'https://decrypt.co' },
-        { title: 'On-chain API marketplaces compete with AWS', source: 'The Block', sentiment: 'neutral', url: 'https://theblock.co' },
-      ],
-    },
+    data:         newsData,
   });
 }

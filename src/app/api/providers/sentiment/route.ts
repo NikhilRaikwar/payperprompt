@@ -63,23 +63,51 @@ export async function GET(req: NextRequest) {
     if (!paid) return NextResponse.json({ error: 'Payment not verified on Kite chain' }, { status: 402 });
   }
 
+  // Extract queried asset
+  const { searchParams } = new URL(req.url);
+  const asset = (searchParams.get('asset') || 'BTC').toUpperCase();
+
+  // Real-time AI sentiment generator using OpenAI
+  let sentimentData = {
+    asset,
+    sentiment:  'Bullish',
+    score:      78,
+    confidence: 0.85,
+    signals: [
+      { source: 'Twitter/X', sentiment: 'Bullish', weight: 0.4 },
+      { source: 'Reddit',    sentiment: 'Bullish', weight: 0.3 },
+      { source: 'News',      sentiment: 'Neutral', weight: 0.3 },
+    ],
+    summary: `${asset} showing strong bullish momentum. Whale accumulation detected on Kite chain.`,
+  };
+
+  const hasOpenAIKey = process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your_openai_api_key_here');
+  if (hasOpenAIKey) {
+    try {
+      const { OpenAI } = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 250,
+        messages: [{
+          role: 'user',
+          content: `Generate a realistic market sentiment data JSON object for the asset "${asset}". Return ONLY valid JSON matching this schema:
+          { "asset": "${asset}", "sentiment": "Bullish", "score": 82, "confidence": 0.88, "signals": [{"source": "Twitter/X", "sentiment": "Bullish", "weight": 0.5}], "summary": "Short explanation of sentiment" }`
+        }],
+      });
+      const content = completion.choices[0].message.content || '';
+      sentimentData = JSON.parse(content.replace(/```json\n?|```/g, '').trim());
+    } catch (err) {
+      console.error('[SentimentAPI] Failed to fetch dynamic sentiment via OpenAI:', err);
+    }
+  }
+
   return NextResponse.json({
     provider:     'SentimentAPI',
     priceCharged: PRICE_DISPLAY,
     settledOn:    'Kite Testnet (Chain 2368)',
     txHash,
     verified:     !isDemoMode,
-    data: {
-      asset:      'BTC',
-      sentiment:  'Bullish',
-      score:      78,
-      confidence: 0.85,
-      signals: [
-        { source: 'Twitter/X', sentiment: 'Bullish', weight: 0.4 },
-        { source: 'Reddit',    sentiment: 'Bullish', weight: 0.3 },
-        { source: 'News',      sentiment: 'Neutral', weight: 0.3 },
-      ],
-      summary: 'BTC showing strong bullish momentum. Whale accumulation detected on Kite chain.',
-    },
+    data:         sentimentData,
   });
 }

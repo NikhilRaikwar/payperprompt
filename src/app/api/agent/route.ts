@@ -57,25 +57,33 @@ export async function POST(req: NextRequest) {
     log(`[PASSPORT] Spending session: ${session.sessionId}`);
     log(`[PASSPORT] Budget: $${session.budget} PYUSD | Scope: ${session.scope.length} providers | Expires: ${new Date(session.expiresAt).toISOString()}`);
 
-    // Step 2: Use OpenAI to select relevant APIs (keeping OpenAI per user's request)
+    // Step 2: Use OpenAI to select relevant APIs and parse their parameters
     const hasOpenAIKey  = process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your_openai_api_key_here');
     let selectedServices = MOCK_SERVICES.slice(0, 2);
+    let serviceParams: Record<string, string> = {
+      "1": "?city=Bhopal",
+      "2": "?asset=BTC",
+      "3": "?topic=crypto"
+    };
 
     if (hasOpenAIKey) {
       try {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const planRes = await openai.chat.completions.create({
           model:      'gpt-4o-mini',
-          max_tokens: 300,
+          max_tokens: 350,
           messages: [{
             role:    'user',
-            content: `Query: "${query}"\nAPIs: ${JSON.stringify(MOCK_SERVICES.map(s => ({ id: s.id, name: s.name, tags: s.tags, price: s.priceUsdc })))}\nReturn JSON only: { "ids": [1,2], "reason": "..." }`,
+            content: `Query: "${query}"\nAPIs: ${JSON.stringify(MOCK_SERVICES.map(s => ({ id: s.id, name: s.name, tags: s.tags, price: s.priceUsdc })))}\nReturn JSON only: { "ids": [1,2], "params": { "1": "?city=CityName", "2": "?asset=BTC", "3": "?topic=TopicName" }, "reason": "..." }\nEnsure parameter keys match the selected ID as string.`,
           }],
         });
         const text = planRes.choices[0].message.content || '{}';
         const plan = JSON.parse(text.replace(/```json\n?|```/g, '').trim());
         if (plan.ids?.length) {
           selectedServices = MOCK_SERVICES.filter(s => plan.ids.includes(s.id));
+          if (plan.params) {
+            serviceParams = plan.params;
+          }
           log(`[OPENAI] Service selection: ${plan.reason}`);
         }
       } catch (err: unknown) {
@@ -135,9 +143,10 @@ export async function POST(req: NextRequest) {
       txHashes.push(txHash);
 
       // Call payment-gated API with proof headers
-      log(`[CALL] Calling ${service.name} with payment proof (x-payment-tx header)...`);
+      const paramStr = serviceParams[service.id.toString()] || '';
+      log(`[CALL] Calling ${service.name} with parameters "${paramStr}" and payment proof...`);
       try {
-        const apiRes = await fetch(`${baseUrl}${service.endpoint}`, {
+        const apiRes = await fetch(`${baseUrl}${service.endpoint}${paramStr}`, {
           headers: {
             'x-payment-tx':    txHash,
             'x-payer-address': wallet.address,
