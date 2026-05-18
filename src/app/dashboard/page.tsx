@@ -1081,6 +1081,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="topbar-actions">
+            <button className="tb-btn" style={{ borderColor: 'rgba(0, 255, 136, 0.3)', color: 'var(--green)' }} onClick={() => window.open('/api/health','_blank')}>Chain Status ↗</button>
             <button className="tb-btn" onClick={() => window.open('https://testnet.kitescan.ai','_blank')}>KiteScan ↗</button>
             <button className="tb-btn" onClick={() => window.open('https://faucet.gokite.ai','_blank')}>Faucet ↗</button>
             <button className="tb-btn primary" onClick={() => setActiveTab('agent')}>+ Run Agent</button>

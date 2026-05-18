@@ -8,7 +8,8 @@
     "NEXT_PUBLIC_CHAIN_ID":         "2368",
     "NEXT_PUBLIC_EXPLORER":         "https://testnet.kitescan.ai",
     "NEXT_PUBLIC_REGISTRY_ADDRESS": "0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173",
-    "GASLESS_ENDPOINT":             "https://gasless.gokite.ai/testnet"
+    "GASLESS_ENDPOINT":             "https://gasless.gokite.ai/testnet",
+    "AGENT_WALLET_ADDRESS":         "0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173"
   },
   "regions": ["iad1"],
   "functions": {
