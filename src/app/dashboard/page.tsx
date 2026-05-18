@@ -69,6 +69,56 @@ export default function Dashboard() {
   const [registryTags, setRegistryTags] = useState('');
   const [registryWallet, setRegistryWallet] = useState('');
 
+  // Custom Modal States
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'alert' | 'confirm' | 'prompt'>('alert');
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalInputValue, setModalInputValue] = useState('');
+  const [modalResolveRef, setModalResolveRef] = useState<any>(null);
+
+  const showCustomAlert = (message: string, title = "System Notification") => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalType('alert');
+    setModalInputValue('');
+    setModalOpen(true);
+    return new Promise<void>((resolve) => {
+      setModalResolveRef(() => () => {
+        setModalOpen(false);
+        resolve();
+      });
+    });
+  };
+
+  const showCustomConfirm = (message: string, title = "Confirm Action") => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalType('confirm');
+    setModalInputValue('');
+    setModalOpen(true);
+    return new Promise<boolean>((resolve) => {
+      setModalResolveRef(() => (val: boolean) => {
+        setModalOpen(false);
+        resolve(val);
+      });
+    });
+  };
+
+  const showCustomPrompt = (message: string, defaultValue = "", title = "Input Required") => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalType('prompt');
+    setModalInputValue(defaultValue);
+    setModalOpen(true);
+    return new Promise<string | null>((resolve) => {
+      setModalResolveRef(() => (val: string | null) => {
+        setModalOpen(false);
+        resolve(val);
+      });
+    });
+  };
+
   // Historic activities / attestations
   const [activities, setActivities] = useState([
     { icon: '⚡', title: 'WeatherAPI called', hash: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6', amount: '0.005', time: '2 min ago', status: 'SETTLED', desc: 'Agent 0x3f2a → NYC weather' },
@@ -94,21 +144,22 @@ export default function Dashboard() {
   const totalAttestations = activities.filter(a => a.title.includes('called') || a.title.includes('posted')).length;
   const gasSaved = totalApiCalls * 0.02;
 
-  const handleRevokeSession = (id: number, name: string) => {
-    if (confirm(`Are you sure you want to revoke the "${name}" spending session? This will immediately disable autonomous calls under this scope.`)) {
+  const handleRevokeSession = async (id: number, name: string) => {
+    const confirmed = await showCustomConfirm(`Are you sure you want to revoke the "${name}" spending session? This will immediately disable autonomous calls under this scope.`, "Revoke Spending Session");
+    if (confirmed) {
       setSessions(prev => prev.map(s => s.id === id ? { ...s, active: false, indicator: 'var(--red)', meta: 'Revoked by user · Active spending rules cleared ✓' } : s));
     }
   };
 
-  const handleRenewSession = (id: number, name: string) => {
+  const handleRenewSession = async (id: number, name: string) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, progress: 0.0, progressPct: 0, meta: 'Renewed just now · Scope: NewsAPI · Passkey approved ✓', indicator: 'var(--green)' } : s));
-    alert(`Spending session "${name}" renewed successfully! Budget usage reset to $0.00.`);
+    await showCustomAlert(`Spending session "${name}" renewed successfully! Budget usage reset to $0.00.`, "Session Renewed");
   };
 
-  const handleCreateSession = () => {
-    const scopeName = prompt("Enter scope name (e.g. GeocoderAPI, NewsAPI):", "GeocoderAPI");
+  const handleCreateSession = async () => {
+    const scopeName = await showCustomPrompt("Enter scope name (e.g. GeocoderAPI, NewsAPI):", "GeocoderAPI", "Create Spending Session");
     if (!scopeName) return;
-    const budgetVal = prompt("Enter budget limit in PYUSD:", "1.00");
+    const budgetVal = await showCustomPrompt("Enter budget limit in PYUSD:", "1.00", "Create Spending Session");
     if (!budgetVal) return;
     
     const newId = sessions.length + 1;
@@ -125,7 +176,7 @@ export default function Dashboard() {
       },
       ...prev
     ]);
-    alert(`New Spending Session for "${scopeName}" created and signed successfully on-chain!`);
+    await showCustomAlert(`New Spending Session for "${scopeName}" created and signed successfully on-chain!`, "Session Created");
   };
 
   // Explicitly restore standard system cursor on mount
@@ -339,7 +390,7 @@ export default function Dashboard() {
 
   const handleRegisterAPI = async () => {
     if (!registryName || !registryPrice) {
-      alert('Please fill out the API Name and Price per call!');
+      await showCustomAlert('Please fill out the API Name and Price per call!', "Validation Error");
       return;
     }
 
@@ -347,7 +398,7 @@ export default function Dashboard() {
       const tagsArray = registryTags ? registryTags.split(',').map(t => t.trim()) : ['api', 'kite'];
       const parsedPrice = ethers.parseEther(registryPrice);
 
-      alert(`Initiating on-chain contract write to register "${registryName}" on Kite Service Registry! Please confirm in your browser wallet...`);
+      await showCustomAlert(`Initiating on-chain contract write to register "${registryName}" on Kite Service Registry! Please confirm in your browser wallet...`, "Confirm Register API");
 
       const hash = await writeContractAsync({
         address: '0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173', // Registry address
@@ -374,7 +425,7 @@ export default function Dashboard() {
         ]
       });
 
-      alert(`API Provider "${registryName}" registered successfully on Kite Registry Contract!\nTransaction Hash: ${hash}\n\nIt has been dynamically added to your local Marketplace!`);
+      await showCustomAlert(`API Provider "${registryName}" registered successfully on Kite Registry Contract!\nTransaction Hash: ${hash}\n\nIt has been dynamically added to your local Marketplace!`, "Registration Successful");
 
       // Add to APIs state list
       const icon = registryCategory === 'Weather' ? '🌤' : registryCategory === 'Finance / Price' ? '📊' : registryCategory === 'AI / LLM' ? '🤖' : registryCategory === 'News / Media' ? '📰' : '⚙️';
@@ -406,7 +457,7 @@ export default function Dashboard() {
       setActiveTab('marketplace');
 
     } catch (err: any) {
-      alert(`Deployment failed: ${err.message || 'Transaction rejected by user.'}`);
+      await showCustomAlert(`Deployment failed: ${err.message || 'Transaction rejected by user.'}`, "Transaction Failed");
     }
   };
 
@@ -1061,6 +1112,74 @@ export default function Dashboard() {
             font-size: 10px;
           }
         }
+
+        /* CUSTOM MODAL OVERLAY & BOX STYLE STACK */
+        .custom-modal-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(3, 7, 18, 0.85);
+          backdrop-filter: blur(8px);
+          display: flex; align-items: center; justify-content: center;
+          z-index: 999999;
+          opacity: 0;
+          animation: fadeIn 0.2s forwards ease-out;
+        }
+        .custom-modal-box {
+          background: var(--bg2);
+          border: 1px solid var(--border2);
+          width: 90%;
+          max-width: 480px;
+          padding: 24px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+          animation: scaleUp 0.25s forwards cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .custom-modal-header {
+          display: flex; align-items: center; justify-content: space-between;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 12px;
+          margin-bottom: 16px;
+        }
+        .custom-modal-title {
+          font-size: 13px;
+          font-weight: 800;
+          color: var(--white);
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          font-family: var(--mono);
+        }
+        .custom-modal-body {
+          font-family: var(--mono);
+          font-size: 12px;
+          color: var(--muted);
+          line-height: 1.6;
+          margin-bottom: 20px;
+        }
+        .custom-modal-input {
+          width: 100%;
+          background: var(--bg);
+          border: 1px solid var(--border);
+          color: var(--white);
+          padding: 10px 14px;
+          font-family: var(--mono);
+          font-size: 11px;
+          margin-top: 12px;
+          outline: none;
+          transition: all 0.15s;
+        }
+        .custom-modal-input:focus {
+          border-color: var(--green);
+        }
+        .custom-modal-footer {
+          display: flex; justify-content: flex-end; gap: 12px;
+        }
+        
+        @keyframes fadeIn {
+          to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
       ` }} />
 
       {/* Mobile Drawer Backdrop */}
@@ -1615,6 +1734,58 @@ export default function Dashboard() {
 
         </div>
       </main>
+
+      {/* CUSTOM DESIGNED POPUP BOX / MODAL OVERLAY */}
+      {modalOpen && (
+        <div className="custom-modal-overlay">
+          <div className="custom-modal-box">
+            <div className="custom-modal-header">
+              <div className="custom-modal-title">{modalTitle}</div>
+              <button 
+                style={{ background: 'transparent', border: 'none', color: 'var(--muted)', fontSize: '18px', cursor: 'pointer', fontFamily: 'var(--mono)' }}
+                onClick={() => modalResolveRef && modalResolveRef(modalType === 'confirm' ? false : null)}
+              >×</button>
+            </div>
+            <div className="custom-modal-body">
+              {modalMessage.split('\n').map((line, idx) => (
+                <div key={idx} style={{ marginBottom: '4px' }}>{line}</div>
+              ))}
+              {modalType === 'prompt' && (
+                <input
+                  type="text"
+                  className="custom-modal-input"
+                  value={modalInputValue}
+                  onChange={(e) => setModalInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      modalResolveRef && modalResolveRef(modalInputValue);
+                    }
+                  }}
+                  autoFocus
+                />
+              )}
+            </div>
+            <div className="custom-modal-footer">
+              {modalType === 'confirm' && (
+                <>
+                  <button className="tb-btn" onClick={() => modalResolveRef && modalResolveRef(false)}>Cancel</button>
+                  <button className="tb-btn primary" onClick={() => modalResolveRef && modalResolveRef(true)}>Confirm</button>
+                </>
+              )}
+              {modalType === 'prompt' && (
+                <>
+                  <button className="tb-btn" onClick={() => modalResolveRef && modalResolveRef(null)}>Cancel</button>
+                  <button className="tb-btn primary" onClick={() => modalResolveRef && modalResolveRef(modalInputValue)}>Submit</button>
+                </>
+              )}
+              {modalType === 'alert' && (
+                <button className="tb-btn primary" style={{ minWidth: '80px' }} onClick={() => modalResolveRef && modalResolveRef()}>OK</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
