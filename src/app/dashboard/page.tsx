@@ -77,15 +77,56 @@ export default function Dashboard() {
     { icon: '⚡', title: 'SentimentAPI called', hash: '0xcbce02aa1b67f3df993889390b02cdac2783aafd7f8735e54324ecce053cf0e6', amount: '0.008', time: '11 min ago', status: 'SETTLED', desc: 'Agent 0x3f2a → BTC sentiment' },
   ]);
 
+  // Dynamic state for Sessions list
+  const [sessions, setSessions] = useState([
+    { id: 1, name: 'WeatherAPI Session', meta: 'Created 13 min ago · Scope: WeatherAPI only · Passkey approved ✓', progress: 0.015, progressPct: 15, max: 1.0, active: true, indicator: 'var(--green)' },
+    { id: 2, name: 'SentimentAPI Session', meta: 'Created 28 min ago · Scope: SentimentAPI only · Passkey approved ✓', progress: 0.48, progressPct: 48, max: 1.0, active: true, indicator: 'var(--green)' },
+    { id: 3, name: 'NewsAPI Session', meta: 'Expires in 4 min · Scope: NewsAPI · Auto-renewed 2x', progress: 0.82, progressPct: 82, max: 1.0, active: true, indicator: 'var(--yellow)' },
+  ]);
+
   // Real-time computed dashboard metrics from activities state
   const totalApiCalls = activities.filter(a => a.title.includes('called')).length;
   const totalPyusdSettled = activities.reduce((sum, a) => {
     const val = parseFloat(a.amount);
     return isNaN(val) ? sum : sum + val;
   }, 0);
-  const activeSessions = activities.filter(a => a.status === 'PENDING').length;
+  const activeSessions = sessions.filter(s => s.active).length;
   const totalAttestations = activities.filter(a => a.title.includes('called') || a.title.includes('posted')).length;
   const gasSaved = totalApiCalls * 0.02;
+
+  const handleRevokeSession = (id: number, name: string) => {
+    if (confirm(`Are you sure you want to revoke the "${name}" spending session? This will immediately disable autonomous calls under this scope.`)) {
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, active: false, indicator: 'var(--red)', meta: 'Revoked by user · Active spending rules cleared ✓' } : s));
+    }
+  };
+
+  const handleRenewSession = (id: number, name: string) => {
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, progress: 0.0, progressPct: 0, meta: 'Renewed just now · Scope: NewsAPI · Passkey approved ✓', indicator: 'var(--green)' } : s));
+    alert(`Spending session "${name}" renewed successfully! Budget usage reset to $0.00.`);
+  };
+
+  const handleCreateSession = () => {
+    const scopeName = prompt("Enter scope name (e.g. GeocoderAPI, NewsAPI):", "GeocoderAPI");
+    if (!scopeName) return;
+    const budgetVal = prompt("Enter budget limit in PYUSD:", "1.00");
+    if (!budgetVal) return;
+    
+    const newId = sessions.length + 1;
+    setSessions(prev => [
+      {
+        id: newId,
+        name: `${scopeName} Session`,
+        meta: `Created just now · Scope: ${scopeName} only · Passkey approved ✓`,
+        progress: 0.0,
+        progressPct: 0,
+        max: parseFloat(budgetVal) || 1.0,
+        active: true,
+        indicator: 'var(--green)'
+      },
+      ...prev
+    ]);
+    alert(`New Spending Session for "${scopeName}" created and signed successfully on-chain!`);
+  };
 
   // Explicitly restore standard system cursor on mount
   useEffect(() => {
@@ -1353,10 +1394,10 @@ export default function Dashboard() {
                   <div className="panel-header"><div className="panel-title">Last Attestation</div></div>
                   <div className="panel-body">
                     <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--muted)', lineHeight: 2 }}>
-                      <div>Provider: <span style={{ color: 'var(--white)' }}>WeatherAPI</span></div>
-                      <div>Amount: <span style={{ color: 'var(--green)' }}>0.005 USDC</span></div>
-                      <div>Tx: <a href="https://testnet.kitescan.ai" target="_blank" style={{ color: 'var(--green)', textDecoration: 'none' }}>0x3a8f...7c12 ↗</a></div>
-                      <div>Block: <span style={{ color: 'var(--white)' }}>4,821,093</span></div>
+                      <div>Provider: <span style={{ color: 'var(--white)' }}>{lastAttestation.provider}</span></div>
+                      <div>Amount: <span style={{ color: 'var(--green)' }}>{lastAttestation.amount}</span></div>
+                      <div>Tx: <a href={`https://testnet.kitescan.ai/tx/${lastAttestation.tx}`} target="_blank" style={{ color: 'var(--green)', textDecoration: 'none' }}>{lastAttestation.tx.slice(0, 10)}... ↗</a></div>
+                      <div>Block: <span style={{ color: 'var(--white)' }}>{lastAttestation.block}</span></div>
                     </div>
                   </div>
                 </div>
@@ -1368,56 +1409,36 @@ export default function Dashboard() {
           {activeTab === 'sessions' && (
             <div className="page active" id="page-sessions">
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-                <button className="tb-btn primary" onClick={() => alert('Creates new Passport spending session via kpass CLI')}>+ New Session</button>
+                <button className="tb-btn primary" onClick={handleCreateSession}>+ New Session</button>
               </div>
-              <div className="session-card active">
-                <div className="session-indicator" style={{ background: 'var(--green)' }}></div>
-                <div className="session-info">
-                  <div className="session-name">WeatherAPI Session</div>
-                  <div className="session-meta">Created 13 min ago · Scope: WeatherAPI only · Passkey approved ✓</div>
+              {sessions.map((s) => (
+                <div className={`session-card ${s.active ? 'active' : ''}`} key={s.id}>
+                  <div className="session-indicator" style={{ background: s.indicator }}></div>
+                  <div className="session-info">
+                    <div className="session-name">{s.name}</div>
+                    <div className="session-meta">{s.meta}</div>
+                  </div>
+                  <div className="session-budget">
+                    <div className="session-budget-label">BUDGET USED</div>
+                    <div className="progress-track"><div className="progress-fill" style={{ width: `${s.progressPct}%` }}></div></div>
+                    <div className="progress-nums"><span>${s.progress.toFixed(3)}</span><span>${s.max.toFixed(2)}</span></div>
+                  </div>
+                  <div className="session-actions">
+                    {s.active ? (
+                      <>
+                        {s.name.includes('News') ? (
+                          <button className="sess-btn" onClick={() => handleRenewSession(s.id, s.name)}>Renew</button>
+                        ) : (
+                          <button className="sess-btn" onClick={() => alert('Viewing granular spending rule constraints...')}>Details</button>
+                        )}
+                        <button className="sess-btn danger" onClick={() => handleRevokeSession(s.id, s.name)}>Revoke</button>
+                      </>
+                    ) : (
+                      <span className="badge badge-red" style={{ borderColor: 'rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.08)' }}>REVOKED</span>
+                    )}
+                  </div>
                 </div>
-                <div className="session-budget">
-                  <div className="session-budget-label">BUDGET USED</div>
-                  <div className="progress-track"><div className="progress-fill" style={{ width: '15%' }}></div></div>
-                  <div className="progress-nums"><span>$0.015</span><span>$1.00</span></div>
-                </div>
-                <div className="session-actions">
-                  <button className="sess-btn">Details</button>
-                  <button className="sess-btn danger">Revoke</button>
-                </div>
-              </div>
-              <div className="session-card active">
-                <div className="session-indicator" style={{ background: 'var(--green)' }}></div>
-                <div className="session-info">
-                  <div className="session-name">SentimentAPI Session</div>
-                  <div className="session-meta">Created 28 min ago · Scope: SentimentAPI only · Passkey approved ✓</div>
-                </div>
-                <div className="session-budget">
-                  <div className="session-budget-label">BUDGET USED</div>
-                  <div className="progress-track"><div className="progress-fill" style={{ width: '48%' }}></div></div>
-                  <div className="progress-nums"><span>$0.48</span><span>$1.00</span></div>
-                </div>
-                <div className="session-actions">
-                  <button className="sess-btn">Details</button>
-                  <button className="sess-btn danger">Revoke</button>
-                </div>
-              </div>
-              <div className="session-card">
-                <div className="session-indicator" style={{ background: 'var(--yellow)' }}></div>
-                <div className="session-info">
-                  <div className="session-name">NewsAPI Session</div>
-                  <div className="session-meta">Expires in 4 min · Scope: NewsAPI · Auto-renewed 2x</div>
-                </div>
-                <div className="session-budget">
-                  <div className="session-budget-label">BUDGET USED</div>
-                  <div className="progress-track"><div className="progress-fill" style={{ width: '82%' }}></div></div>
-                  <div className="progress-nums"><span>$0.82</span><span>$1.00</span></div>
-                </div>
-                <div className="session-actions">
-                  <button className="sess-btn">Renew</button>
-                  <button className="sess-btn danger">Revoke</button>
-                </div>
-              </div>
+              ))}
 
               <div className="panel" style={{ marginTop: '20px' }}>
                 <div className="panel-header"><div className="panel-title">Kite AA SDK — Spending Rules</div></div>
