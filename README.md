@@ -1,6 +1,6 @@
 # ⚡ PayPerPrompt — Stripe for AI Agents
 
-![PayPerPrompt Banner](https://payperprompt.nikhilraikwar.me/banner.png)
+![PayPerPrompt Banner](public/banner.png)
 
 > Autonomous gasless stablecoin micropayments for AI Agents executing on the Kite Chain. Built with the **Kite Agent Passport** protocol, **Account Abstraction**, **EIP-3009**, and indexed via **Goldsky**.
 
