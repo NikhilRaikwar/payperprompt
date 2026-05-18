@@ -110,24 +110,36 @@ export default function Dashboard() {
     const tStr = new Date().toTimeString().slice(0, 8);
 
     const qLower = q.toLowerCase();
-    const isWeather = qLower.includes('weather') || qLower.includes('temp') || qLower.includes('nyc') || qLower.includes('rain');
-    const isSentiment = qLower.includes('sentiment') || qLower.includes('btc') || qLower.includes('eth') || qLower.includes('crypto');
-    const isPrice = qLower.includes('price') || qLower.includes('ticker') || qLower.includes('cost');
+    const isWeather = qLower.includes('weather') || qLower.includes('temp') || qLower.includes('nyc') || qLower.includes('rain') || qLower.includes('forecast');
+    const isSentiment = qLower.includes('sentiment') || qLower.includes('bullish') || qLower.includes('bearish') || qLower.includes('mood');
+    const isPrice = qLower.includes('price') || qLower.includes('ticker') || qLower.includes('cost') || qLower.includes('value') || qLower.includes('btc') || qLower.includes('eth') || qLower.includes('sol');
+    const isNews = qLower.includes('news') || qLower.includes('headline') || qLower.includes('media') || qLower.includes('article') || qLower.includes('world');
+    const isGpt = qLower.includes('gpt') || qLower.includes('ai') || qLower.includes('claude') || qLower.includes('chat') || qLower.includes('generate') || qLower.includes('write') || qLower.includes('llm');
+    const isGeo = qLower.includes('geo') || qLower.includes('location') || qLower.includes('coordinate') || qLower.includes('latitude') || qLower.includes('maps') || qLower.includes('address');
 
     const matchedAPIs: Array<{ name: string; cost: number; response: string; desc: string; icon: string }> = [];
     if (isWeather) {
-      matchedAPIs.push({ name: 'WeatherAPI', cost: 0.005, response: 'NYC temp 22°C, humidity 65%', desc: 'NYC weather info', icon: '⚡' });
+      matchedAPIs.push({ name: 'WeatherAPI', cost: 0.005, response: 'NYC temp 22°C, humidity 65%, Sunny', desc: 'NYC weather info', icon: '🌤' });
     }
     if (isSentiment) {
-      matchedAPIs.push({ name: 'SentimentAPI', cost: 0.008, response: 'BTC sentiment: Bullish 78% | ETH: $3,241', desc: 'BTC/ETH sentiment score', icon: '⚡' });
+      matchedAPIs.push({ name: 'SentimentAPI', cost: 0.008, response: 'Crypto market sentiment: Bullish 78%', desc: 'BTC/ETH sentiment score', icon: '🧠' });
     }
     if (isPrice) {
-      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.006, response: 'ETH price: $3,241.50 | BTC price: $67,820.10', desc: 'Crypto real-time ticker feed', icon: '⚡' });
+      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.003, response: 'ETH price: $3,241.50 | BTC price: $67,820.10', desc: 'Crypto real-time ticker feed', icon: '📊' });
+    }
+    if (isNews) {
+      matchedAPIs.push({ name: 'NewsAPI', cost: 0.010, response: 'Breaking: Kite AI partners with PYUSD for EIP-3009 gasless relayer ecosystem.', desc: 'Top world headlines', icon: '📰' });
+    }
+    if (isGpt) {
+      matchedAPIs.push({ name: 'GPT-MiniProxy', cost: 0.050, response: 'AI response: The EIP-3009 standard allows gasless authorization signatures via transferWithAuthorization.', desc: 'Claude Haiku dynamic proxy', icon: '🤖' });
+    }
+    if (isGeo) {
+      matchedAPIs.push({ name: 'GeocoderAPI', cost: 0.002, response: 'Location resolved: NYC, Latitude 40.7128° N, Longitude 74.0060° W', desc: 'Geocoder address resolver', icon: '🗺' });
     }
     
     // Fallback if none matched
     if (matchedAPIs.length === 0) {
-      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.006, response: 'ETH price: $3,241.50 | BTC price: $67,820.10', desc: 'Crypto real-time ticker feed', icon: '⚡' });
+      matchedAPIs.push({ name: 'CryptoPriceAPI', cost: 0.003, response: 'ETH price: $3,241.50 | BTC price: $67,820.10', desc: 'Crypto real-time ticker feed', icon: '📊' });
     }
 
     const matchedNames = matchedAPIs.map(a => a.name).join(' + ');
@@ -137,7 +149,7 @@ export default function Dashboard() {
       { level: 'info', msg: `Query: "${q}"`, time: tStr },
       { level: 'info', msg: 'Starting agent task...', time: tStr },
       { level: 'info', msg: 'Querying Goldsky subgraph for matching APIs...', time: tStr },
-      { level: 'success', msg: 'Found 3 APIs: WeatherAPI <hl>$0.005</hl>, SentimentAPI <hl>$0.008</hl>, NewsAPI <hl>$0.010</hl>', time: tStr },
+      { level: 'success', msg: `Found ${matchedAPIs.length} match(es): ` + matchedAPIs.map(a => `${a.name} (<hl>$${a.cost}</hl>)`).join(', '), time: tStr },
       { level: 'info', msg: `Creating Passport spending session — budget: <hl>$1.00 USDC</hl>, scope: ${matchedNames}`, time: tStr },
       { level: 'warn', msg: 'Awaiting wallet signature approval for spending session in your connected wallet...', time: tStr }
     ]);
@@ -1008,7 +1020,7 @@ export default function Dashboard() {
           </div>
           <div className={`nav-item ${activeTab === 'marketplace' ? 'active' : ''}`} onClick={() => { setActiveTab('marketplace'); setSidebarOpen(false); }}>
             <span className="icon">◈</span> Marketplace
-            <span className="badge">12</span>
+            <span className="badge">{apis.length}</span>
           </div>
           <div className={`nav-item ${activeTab === 'agent' ? 'active' : ''}`} onClick={() => { setActiveTab('agent'); setSidebarOpen(false); }}>
             <span className="icon">⬡</span> Run Agent
