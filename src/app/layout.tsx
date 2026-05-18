@@ -16,7 +16,42 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PayPerPrompt — Stripe for AI Agents",
-  description: "Micropayments for autonomous AI agents settled on Kite Testnet",
+  description: "Autonomous gasless stablecoin micropayments for AI Agents executing on the Kite Chain. Built with Kite Passport and EIP-3009.",
+  keywords: [
+    "Kite AI",
+    "Stripe for AI Agents",
+    "Agentic Web3",
+    "EIP-3009",
+    "PYUSD",
+    "Gasless micropayments",
+    "Account Abstraction",
+    "AI Agent Economy",
+    "Kite Chain Testnet"
+  ],
+  authors: [{ name: "Nikhil Raikwar" }],
+  openGraph: {
+    title: "PayPerPrompt — Stripe for AI Agents",
+    description: "Autonomous gasless stablecoin micropayments for AI Agents executing on the Kite Chain. Built with Kite Passport and EIP-3009.",
+    url: "https://payperprompt.nikhilraikwar.me",
+    siteName: "PayPerPrompt",
+    images: [
+      {
+        url: "https://payperprompt.nikhilraikwar.me/banner.png",
+        width: 1200,
+        height: 630,
+        alt: "PayPerPrompt — Stripe for AI Agents",
+      }
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PayPerPrompt — Stripe for AI Agents",
+    description: "Autonomous gasless stablecoin micropayments for AI Agents executing on the Kite Chain. Built with Kite Passport and EIP-3009.",
+    images: ["https://payperprompt.nikhilraikwar.me/banner.png"],
+  },
+  metadataBase: new URL("https://payperprompt.nikhilraikwar.me"),
 };
 
 export default function RootLayout({
