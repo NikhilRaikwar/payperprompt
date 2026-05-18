@@ -8,7 +8,165 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 export default function Page() {
   const router = useRouter();
   const { isConnected } = useAccount();
-  const [activeNodeIdx, setActiveNodeIdx] = useState(0);
+  const [activeArchIdx, setActiveArchIdx] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+
+  // Config arrays for architecture code panels
+  const ARCH_CODES = [
+    (
+      <>
+        <div><span className="c-comment">// 1. RPC Configuration for Kite Testnet</span></div>
+        <div><span className="c-keyword">const</span> <span className="c-var">KITE_TESTNET</span> = {`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-white">chainId:</span> <span className="c-num">2368</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">name:</span> <span className="c-string">'Kite Testnet'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">rpcUrl:</span> <span className="c-string">'https://rpc-testnet.gokite.ai'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">explorer:</span> <span className="c-string">'https://testnet.kitescan.ai'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">faucet:</span> <span className="c-string">'https://faucet.gokite.ai'</span></div>
+        <div>{`}`};</div>
+        <div>&nbsp;</div>
+        <div><span className="c-keyword">const</span> <span className="c-var">provider</span> = <span className="c-keyword">new</span> <span className="c-var">ethers</span>.<span className="c-fn">JsonRpcProvider</span>(<span className="c-var">KITE_TESTNET</span>.rpcUrl);</div>
+        <div><span className="c-keyword">const</span> <span className="c-var">blockNumber</span> = <span className="c-keyword">await</span> <span className="c-var">provider</span>.<span className="c-fn">getBlockNumber</span>();</div>
+        <div><span className="c-var">console</span>.<span className="c-fn">log</span>(<span className="c-string">`Connected to Kite Testnet block: $`</span>{`{`}<span className="c-var">blockNumber</span>{`}`}<span className="c-string">`</span>);</div>
+      </>
+    ),
+
+    (
+      <>
+        <div><span className="c-comment">// 2. Agent Passport — spending session</span></div>
+        <div><span className="c-keyword">const</span> <span className="c-var">session</span> = <span className="c-keyword">await</span> <span className="c-fn">createPassportSession</span>({`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-white">budget:</span> <span className="c-string">'1.00'</span>,             <span className="c-comment">// $1.00 PYUSD spending limit</span></div>
+        <div>&nbsp;&nbsp;<span className="c-white">durationSeconds:</span> <span className="c-num">3600</span>,      <span className="c-comment">// TTL: 1 hour</span></div>
+        <div>&nbsp;&nbsp;<span className="c-white">providerAddresses:</span> [<span className="c-string">'0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173'</span>],</div>
+        <div>&nbsp;&nbsp;<span className="c-white">agentAddress:</span> <span className="c-string">'0x3f2a356c7d8e9f0a1b2c3d4e5f6a7b8c91'</span></div>
+        <div>{`}`});</div>
+        <div>&nbsp;</div>
+        <div><span className="c-comment">// Verify spending rules before making the call</span></div>
+        <div><span className="c-keyword">const</span> <span className="c-var">isAuthorized</span> = <span className="c-fn">validateSession</span>(session, <span className="c-num">0.005</span>);</div>
+        <div><span className="c-keyword">if</span> (!isAuthorized) {`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-keyword">throw</span> <span className="c-keyword">new</span> <span className="c-fn">Error</span>(<span className="c-string">"Passport budget limit exceeded!"</span>);</div>
+        <div>{`}`}</div>
+      </>
+    ),
+
+    (
+      <>
+        <div><span className="c-comment">// 3. EIP-3009 TransferWithAuthorization signature</span></div>
+        <div><span className="c-keyword">const</span> <span className="c-var">domain</span> = {`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-white">name:</span> <span className="c-string">'PYUSD'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">version:</span> <span className="c-string">'1'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">chainId:</span> <span className="c-num">2368</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">verifyingContract:</span> <span className="c-string">'0x8E04D099b1a8Dd20E6caD4b2Ab2B405B98242ec9'</span></div>
+        <div>{`}`};</div>
+        <div>&nbsp;</div>
+        <div><span className="c-keyword">const</span> <span className="c-var">message</span> = {`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-white">from:</span> account,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">to:</span> providerAddress,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">value:</span> <span className="c-fn">parseUnits</span>(<span className="c-string">'0.005'</span>, <span className="c-num">18</span>),</div>
+        <div>&nbsp;&nbsp;<span className="c-white">validAfter:</span> now - <span className="c-num">5</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">validBefore:</span> now + <span className="c-num">25</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-white">nonce:</span> <span className="c-fn">randomBytes</span>(<span className="c-num">32</span>)</div>
+        <div>{`}`};</div>
+        <div>&nbsp;</div>
+        <div><span className="c-comment">// POST signature to gasless relayer</span></div>
+        <div><span className="c-keyword">const</span> <span className="c-var">txHash</span> = <span className="c-keyword">await</span> <span className="c-fn">submitToRelayer</span>(domain, message, signature);</div>
+      </>
+    ),
+
+    (
+      <>
+        <div><span className="c-comment">// 4. AA SDK constructor and vault proxy deployment</span></div>
+        <div><span className="c-keyword">import</span> {`{ GokiteAASDK }`} <span className="c-keyword">from</span> <span className="c-string">'gokite-aa-sdk'</span>;</div>
+        <div>&nbsp;</div>
+        <div><span className="c-keyword">const</span> <span className="c-var">sdk</span> = <span className="c-keyword">new</span> <span className="c-fn">GokiteAASDK</span>(</div>
+        <div>&nbsp;&nbsp;<span className="c-string">'kite_testnet'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-string">'https://rpc-testnet.gokite.ai'</span>,</div>
+        <div>&nbsp;&nbsp;<span className="c-string">'https://bundler-service.staging.gokite.ai/rpc/'</span></div>
+        <div>);</div>
+        <div>&nbsp;</div>
+        <div><span className="c-comment">// Configure ClientAgentVault UUPS proxy rules</span></div>
+        <div><span className="c-keyword">const</span> <span className="c-var">tx</span> = <span className="c-keyword">await</span> <span className="c-fn">configureSpendingRules</span>(sdk, {`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-white">timeWindow:</span> <span className="c-num">3600n</span>, <span className="c-comment">// Hourly window</span></div>
+        <div>&nbsp;&nbsp;<span className="c-white">budget:</span> <span className="c-var">ethers</span>.<span className="c-fn">parseUnits</span>(<span className="c-string">'1'</span>, <span className="c-num">18</span>),</div>
+        <div>&nbsp;&nbsp;<span className="c-white">targetProviders:</span> [<span className="c-string">'0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173'</span>]</div>
+        <div>{`}`});</div>
+      </>
+    ),
+
+    (
+      <>
+        <div><span className="c-comment"># 5. GraphQL query to Goldsky to discover services</span></div>
+        <div><span className="c-keyword">query</span> <span className="c-fn">DiscoverAPIs</span> {`{`}</div>
+        <div>&nbsp;&nbsp;<span className="c-var">serviceRegisteredEntities</span>(</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span className="c-white">where:</span> {`{`} <span className="c-white">tags_contains:</span> [<span className="c-string">"weather"</span>], <span className="c-white">active:</span> <span className="c-keyword">true</span> {`}`}</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span className="c-white">orderBy:</span> pricePerCall</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span className="c-white">orderDirection:</span> asc</div>
+        <div>&nbsp;&nbsp;) {`{`}</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;id</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;provider</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;name</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;endpoint</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;pricePerCall</div>
+        <div>&nbsp;&nbsp;{`}`}</div>
+        <div>{`}`}</div>
+      </>
+    )
+  ];
+
+  const ARCH_METADATA = [
+    { filename: 'kite-config.ts', lang: 'TypeScript' },
+    { filename: 'passport-session.ts', lang: 'TypeScript' },
+    { filename: 'eip3009-signer.ts', lang: 'TypeScript' },
+    { filename: 'gokite-aa-setup.ts', lang: 'TypeScript' },
+    { filename: 'goldsky-query.graphql', lang: 'GraphQL' }
+  ];
+
+  // Auto-play interval for architecture carousel
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setActiveArchIdx((prev) => (prev + 1) % 5);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  // Infinite simulation script loop for the live terminal block
+  useEffect(() => {
+    const steps = [
+      { text: "> node agent.js", delay: 1000 },
+      { text: "🔍 Discovering APIs via Goldsky Subgraph...", delay: 1500 },
+      { text: "✓ Found WeatherAPI ($0.005 PYUSD/call) at 0x4a9B...173", delay: 1800 },
+      { text: "🛂 Creating scoped Passport spending session...", delay: 1800 },
+      { text: "✓ Session approved (max_amount: $1.00 PYUSD)", delay: 1500 },
+      { text: "⚡ Generating EIP-3009 transfer signature...", delay: 1500 },
+      { text: "⛽ POSTing gasless transfer to relayer...", delay: 1800 },
+      { text: "✓ Gasless PYUSD transfer settled. tx: 0x51c5...692b", delay: 1500 },
+      { text: "📡 Calling weather API endpoint with payment proof...", delay: 1500 },
+      { text: "✓ WeatherAPI responded: New York 21°C, Partly Cloudy", delay: 1500 },
+      { text: "🔗 Posting call attestation to Kite Registry...", delay: 1800 },
+      { text: "✓ Attestation confirmed. tx: 0xcbce...f0e6", delay: 2000 },
+      { text: "🎉 Autonomous execution completed successfully!", delay: 4000 }
+    ];
+
+    let timer: NodeJS.Timeout;
+    
+    const runStep = (index: number) => {
+      if (index === 0) {
+        setTerminalLines([steps[0].text]);
+      } else {
+        setTerminalLines((prev) => [...prev, steps[index].text]);
+      }
+
+      const nextIndex = (index + 1) % steps.length;
+      timer = setTimeout(() => {
+        runStep(nextIndex);
+      }, steps[index].delay);
+    };
+
+    runStep(0);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initialize body styles on mount to ensure scrolling is fully functional on landing page
   useEffect(() => {
@@ -441,9 +599,31 @@ export default function Page() {
           padding: 20px;
           background: var(--bg);
           border: 1px solid var(--border);
-          transition: border-color 0.2s;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
         }
-        .arch-feature:hover { border-color: var(--border2); }
+        .arch-feature:hover {
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+        .arch-feature.active {
+          border-color: var(--green);
+          background: rgba(0, 255, 136, 0.04);
+        }
+        .arch-feature-progress {
+          position: absolute;
+          bottom: 0; left: 0; height: 2px;
+          background: var(--green);
+          width: 0%;
+        }
+        .arch-feature.active .arch-feature-progress {
+          animation: fillProgress 5s linear forwards;
+        }
+        @keyframes fillProgress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
         .af-icon {
           width: 36px; height: 36px; flex-shrink: 0;
           background: var(--green-dim);
@@ -753,30 +933,28 @@ export default function Page() {
           </div>
         </div>
         <div className="hero-visual">
-          <div className="terminal">
+          <div className="terminal" style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.5)', minHeight: '340px' }}>
             <div className="terminal-bar">
               <div className="terminal-dot" style={{ background: '#ff5f56' }}></div>
               <div className="terminal-dot" style={{ background: '#ffbd2e' }}></div>
               <div className="terminal-dot" style={{ background: '#27c93f' }}></div>
               <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--muted)', marginLeft: '8px' }}>agent.ts</span>
             </div>
-            <div className="terminal-body">
-              <div><span className="t-muted">// Agent discovers & pays for weather API</span></div>
-              <div><span className="t-keyword">const</span> <span className="t-var">api</span> = <span className="t-keyword">await</span> <span className="t-fn">discoverAPI</span>({`{`}</div>
-              <div>&nbsp;&nbsp;<span className="t-white">query:</span> <span className="t-string">'weather'</span>,</div>
-              <div>&nbsp;&nbsp;<span className="t-white">maxPrice:</span> <span className="t-string">'0.01 USDC'</span></div>
-              <div>{`}`});</div>
-              <div>&nbsp;</div>
-              <div><span className="t-muted">// Session approved ✓ Budget: $1 USDC</span></div>
-              <div><span className="t-keyword">const</span> <span className="t-var">result</span> = <span className="t-keyword">await</span> <span className="t-fn">callAndPay</span>({`{`}</div>
-              <div>&nbsp;&nbsp;<span className="t-white">endpoint:</span> <span className="t-var">api</span>.url,</div>
-              <div>&nbsp;&nbsp;<span className="t-white">amount:</span> <span className="t-var">api</span>.price,</div>
-              <div>&nbsp;&nbsp;<span className="t-white">token:</span> <span className="t-string">'PYUSD'</span></div>
-              <div>{`}`});</div>
-              <div>&nbsp;</div>
-              <div><span className="t-green">✓ Paid 0.005 USDC gaslessly</span></div>
-              <div><span className="t-green">✓ Attested on Kite: 0x3f2a...</span></div>
-              <div className="t-green typing">✓ Result delivered</div>
+            <div className="terminal-body" style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {terminalLines.map((line, idx) => {
+                let colorClass = "t-white";
+                if (line.startsWith(">")) colorClass = "t-keyword";
+                else if (line.startsWith("🔍")) colorClass = "t-blue";
+                else if (line.startsWith("✓") || line.startsWith("🎉")) colorClass = "t-green";
+                else if (line.startsWith("🛂") || line.startsWith("📡") || line.startsWith("⚡") || line.startsWith("⛽") || line.startsWith("🔗")) colorClass = "t-yellow";
+
+                const isLast = idx === terminalLines.length - 1;
+                return (
+                  <div key={idx} className={isLast ? "typing" : ""} style={{ minHeight: '20px' }}>
+                    <span className={colorClass}>{line}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -830,73 +1008,75 @@ export default function Page() {
           <div className="section-label">Architecture</div>
           <h2 className="section-title">Built directly from<br/>Kite docs</h2>
           <div className="arch-grid">
-            <div className="code-block reveal">
-              <div className="code-header">
-                <span className="code-filename">kite-integration.ts</span>
-                <span className="code-lang">TypeScript</span>
+            <div className="code-block reveal" style={{ minHeight: '440px', background: '#090d16', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="code-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="code-filename" style={{ color: '#94a3b8' }}>{ARCH_METADATA[activeArchIdx].filename}</span>
+                <span className="code-lang">{ARCH_METADATA[activeArchIdx].lang}</span>
               </div>
-              <div className="code-body" style={{ whiteSpace: 'pre' }}>
-                <span className="c-comment">// AA SDK — from Kite docs</span><br/>
-                <span className="c-keyword">import</span> {`{ GokiteAASDK }`} <span className="c-keyword">from</span> <span className="c-string">'gokite-aa-sdk'</span>;<br/><br/>
-                <span className="c-keyword">const</span> <span className="c-var">sdk</span> = <span className="c-keyword">new</span> <span className="c-fn">GokiteAASDK</span>(<br/>
-                &nbsp;&nbsp;<span className="c-string">'kite_testnet'</span>,<br/>
-                &nbsp;&nbsp;<span className="c-string">'https://rpc-testnet.gokite.ai'</span>,<br/>
-                &nbsp;&nbsp;<span className="c-string">'https://bundler-service.staging.gokite.ai/rpc/'</span><br/>
-                );<br/><br/>
-                <span className="c-comment">// Gasless USDC payment — EIP-3009</span><br/>
-                <span className="c-keyword">const</span> <span className="c-var">payment</span> = <span className="c-keyword">await</span> <span className="c-fn">fetch</span>(<br/>
-                &nbsp;&nbsp;<span className="c-string">'https://gasless.gokite.ai/testnet'</span>,<br/>
-                &nbsp;&nbsp;{`{`}<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;method: <span className="c-string">'POST'</span>,<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;body: <span className="c-fn">JSON.stringify</span>({`{`}<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from: agentWallet,<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;to: providerAddress,<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;value: callPrice,<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tokenAddress: <span className="c-comment">// PYUSD testnet</span><br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="c-string">'0x8E04D099b1a8Dd20E6caD4b2Ab2B405B98242ec9'</span>,<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;validBefore: Date.now() + <span className="c-num">30000</span>,<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...eip3009Sig<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;{`}`})<br/>
-                &nbsp;&nbsp;{`}`}<br/>
-                );<br/><br/>
-                <span className="c-comment">// Spending rules — AA SDK</span><br/>
-                <span className="c-keyword">const</span> <span className="c-var">rules</span> = [{`{`}<br/>
-                &nbsp;&nbsp;timeWindow: <span className="c-num">86400n</span>, <span className="c-comment">// 24h</span><br/>
-                &nbsp;&nbsp;budget: parseUnits(<span className="c-string">'1'</span>, <span className="c-num">18</span>), <span className="c-comment">// $1</span><br/>
-                &nbsp;&nbsp;targetProviders: [providerAddr]<br/>
-                {`}`}[];
+              <div className="code-body" style={{ whiteSpace: 'pre-wrap', minHeight: '380px', color: '#cbd5e1', fontSize: '11.5px', fontFamily: 'var(--mono)', padding: '20px', lineHeight: '1.6' }}>
+                {ARCH_CODES[activeArchIdx]}
               </div>
             </div>
             <div className="arch-features reveal">
-              <div className="arch-feature">
+              <div 
+                className={`arch-feature ${activeArchIdx === 0 ? 'active' : ''}`}
+                onClick={() => { setActiveArchIdx(0); setIsPaused(true); }}
+                onMouseEnter={() => { setActiveArchIdx(0); setIsPaused(true); }}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <div className="arch-feature-progress"></div>
                 <div className="af-icon">🌐</div>
                 <div>
                   <div className="af-title">Kite Testnet — Chain ID 2368</div>
                   <div className="af-desc">RPC: rpc-testnet.gokite.ai · Explorer: testnet.kitescan.ai · Faucet: faucet.gokite.ai</div>
                 </div>
               </div>
-              <div className="arch-feature">
+              <div 
+                className={`arch-feature ${activeArchIdx === 1 ? 'active' : ''}`}
+                onClick={() => { setActiveArchIdx(1); setIsPaused(true); }}
+                onMouseEnter={() => { setActiveArchIdx(1); setIsPaused(true); }}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <div className="arch-feature-progress"></div>
                 <div className="af-icon">🤖</div>
                 <div>
                   <div className="af-title">Agent Passport — Spending Sessions</div>
                   <div className="af-desc">Install via curl agentpassport.ai/install.sh · Budget + time limit per session · Passkey approval</div>
                 </div>
               </div>
-              <div className="arch-feature">
+              <div 
+                className={`arch-feature ${activeArchIdx === 2 ? 'active' : ''}`}
+                onClick={() => { setActiveArchIdx(2); setIsPaused(true); }}
+                onMouseEnter={() => { setActiveArchIdx(2); setIsPaused(true); }}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <div className="arch-feature-progress"></div>
                 <div className="af-icon">⛽</div>
                 <div>
                   <div className="af-title">EIP-3009 Gasless — PYUSD Testnet</div>
                   <div className="af-desc">Token: 0x8E04D099...242ec9 · validBefore window: 30s · POST to gasless.gokite.ai/testnet</div>
                 </div>
               </div>
-              <div className="arch-feature">
+              <div 
+                className={`arch-feature ${activeArchIdx === 3 ? 'active' : ''}`}
+                onClick={() => { setActiveArchIdx(3); setIsPaused(true); }}
+                onMouseEnter={() => { setActiveArchIdx(3); setIsPaused(true); }}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <div className="arch-feature-progress"></div>
                 <div className="af-icon">🏦</div>
                 <div>
                   <div className="af-title">AA SDK — ClientAgentVault</div>
                   <div className="af-desc">Settlement token: 0x0fF5393...e27e63 · Vault impl: 0xB5AAFCC6...e23 · npm: gokite-aa-sdk</div>
                 </div>
               </div>
-              <div className="arch-feature">
+              <div 
+                className={`arch-feature ${activeArchIdx === 4 ? 'active' : ''}`}
+                onClick={() => { setActiveArchIdx(4); setIsPaused(true); }}
+                onMouseEnter={() => { setActiveArchIdx(4); setIsPaused(true); }}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <div className="arch-feature-progress"></div>
                 <div className="af-icon">📊</div>
                 <div>
                   <div className="af-title">Goldsky — Real-Time Indexing</div>
