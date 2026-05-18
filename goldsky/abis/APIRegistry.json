@@ -1,0 +1,98 @@
+[
+  {
+    "inputs": [
+      { "internalType": "string",   "name": "name",         "type": "string" },
+      { "internalType": "string",   "name": "endpoint",     "type": "string" },
+      { "internalType": "uint256",  "name": "pricePerCall", "type": "uint256" },
+      { "internalType": "string[]", "name": "tags",         "type": "string[]" }
+    ],
+    "name": "registerService",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "serviceId", "type": "uint256" },
+      { "internalType": "bytes32", "name": "callHash",  "type": "bytes32" },
+      { "internalType": "bytes32", "name": "txHash",    "type": "bytes32" }
+    ],
+    "name": "recordCall",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "name": "getService",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address",  "name": "provider",     "type": "address" },
+          { "internalType": "string",   "name": "name",         "type": "string" },
+          { "internalType": "string",   "name": "endpoint",     "type": "string" },
+          { "internalType": "uint256",  "name": "pricePerCall", "type": "uint256" },
+          { "internalType": "string[]", "name": "tags",         "type": "string[]" },
+          { "internalType": "bool",     "name": "active",       "type": "bool" },
+          { "internalType": "uint256",  "name": "totalCalls",   "type": "uint256" }
+        ],
+        "internalType": "struct APIRegistry.APIService",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllServices",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address",  "name": "provider",     "type": "address" },
+          { "internalType": "string",   "name": "name",         "type": "string" },
+          { "internalType": "string",   "name": "endpoint",     "type": "string" },
+          { "internalType": "uint256",  "name": "pricePerCall", "type": "uint256" },
+          { "internalType": "string[]", "name": "tags",         "type": "string[]" },
+          { "internalType": "bool",     "name": "active",       "type": "bool" },
+          { "internalType": "uint256",  "name": "totalCalls",   "type": "uint256" }
+        ],
+        "internalType": "struct APIRegistry.APIService[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "serviceCount",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "internalType": "uint256", "name": "id",       "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "provider", "type": "address" },
+      { "indexed": false, "internalType": "string",  "name": "name",     "type": "string" },
+      { "indexed": false, "internalType": "uint256", "name": "price",    "type": "uint256" }
+    ],
+    "name": "ServiceRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true,  "internalType": "uint256", "name": "serviceId", "type": "uint256" },
+      { "indexed": false, "internalType": "address", "name": "caller",    "type": "address" },
+      { "indexed": false, "internalType": "bytes32", "name": "txHash",    "type": "bytes32" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "CallAttested",
+    "type": "event"
+  }
+]

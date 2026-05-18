@@ -1,0 +1,25 @@
+type ServiceRegisteredEntity @entity {
+  id:          String! @id
+  serviceId:   BigInt!
+  provider:    String!
+  name:        String!
+  price:       BigInt!
+  blockNumber: BigInt!
+  timestamp:   BigInt!
+}
+
+type CallAttestedEntity @entity {
+  id:          String! @id
+  serviceId:   BigInt!
+  caller:      String!
+  txHash:      String!
+  timestamp:   BigInt!
+  blockNumber: BigInt!
+}
+
+type ServiceStatsEntity @entity {
+  id:           String! @id
+  totalCalls:   BigInt!
+  totalRevenue: BigInt!
+  lastUpdated:  BigInt!
+}

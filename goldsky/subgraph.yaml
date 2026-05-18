@@ -1,0 +1,41 @@
+# Goldsky Subgraph — PayPerPrompt APIRegistry Indexer
+# Docs: https://docs.gokite.ai/kite-chain/11-goldsky-kite-integration
+# Chain slug for Kite Testnet: kite-ai-testnet
+#
+# Deploy with:
+#   goldsky subgraph deploy payperprompt/v1 --path ./goldsky
+#
+# For quick instant subgraph (no AssemblyScript required):
+#   goldsky subgraph deploy payperprompt/v1 \
+#     --from-abi ./goldsky/abis/APIRegistry.json \
+#     --network kite-ai-testnet \
+#     --contract-address 0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173
+
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: APIRegistry
+    network: kite-ai-testnet
+    source:
+      address: "0x4a9B3AFCbdCb38420fE4cADb9Cf0257c282fe173"
+      abi: APIRegistry
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ServiceRegisteredEntity
+        - CallAttestedEntity
+        - ServiceStatsEntity
+      abis:
+        - name: APIRegistry
+          file: ./abis/APIRegistry.json
+      eventHandlers:
+        - event: ServiceRegistered(indexed uint256,address,string,uint256)
+          handler: handleServiceRegistered
+        - event: CallAttested(indexed uint256,address,bytes32,uint256)
+          handler: handleCallAttested
+      file: ./src/mapping.ts
